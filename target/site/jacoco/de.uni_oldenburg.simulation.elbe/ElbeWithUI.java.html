@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ElbeWithUI.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">elbe</a> &gt; <a href="index.source.html" class="el_package">de.uni_oldenburg.simulation.elbe</a> &gt; <span class="el_source">ElbeWithUI.java</span></div><h1>ElbeWithUI.java</h1><pre class="source lang-java linenums">package de.uni_oldenburg.simulation.elbe;
+
+import sim.display.Controller;
+import sim.display.Display2D;
+import sim.display.GUIState;
+import sim.engine.SimState;
+import sim.portrayal.continuous.ContinuousPortrayal2D;
+import sim.portrayal.grid.FastValueGridPortrayal2D;
+import sim.portrayal.grid.SparseGridPortrayal2D;
+import sim.util.gui.SimpleColorMap;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.OptionalDataException;
+
+/**
+ * Starts the graphical interface (GUI) of MASON by extending the {@link GUIState} and others.
+ */
+public class ElbeWithUI extends GUIState {
+
+	private Display2D display;
+	private JFrame displayFrame;
+<span class="pc" id="L25">	private FastValueGridPortrayal2D elbePortrayal = new FastValueGridPortrayal2D(&quot;Elbe Map&quot;, true);</span>
+<span class="pc" id="L26">	private FastValueGridPortrayal2D tidesPortrayal = new FastValueGridPortrayal2D(&quot;Tides&quot;, false);</span>
+<span class="pc" id="L27">	private ContinuousPortrayal2D vesselPortrayal = new ContinuousPortrayal2D();</span>
+
+<span class="pc" id="L29">	private final double scale = 1; // scale of the simulation // TODO set to 0.5</span>
+
+	/**
+	 * Start the Simulation at time 0
+	 */
+	public ElbeWithUI(final String WEKAPath) {
+<span class="fc" id="L35">		super(new Elbe(System.currentTimeMillis()));</span>
+<span class="fc" id="L36">		((Elbe) this.state).initWEKA(WEKAPath);</span>
+<span class="fc" id="L37">		((Elbe) this.state).setElbeWithUI(this);</span>
+<span class="fc" id="L38">	}</span>
+
+	public ElbeWithUI(Display2D display, JFrame jFrame, final String WEKAPath) {
+<span class="nc" id="L41">		super(new Elbe(System.currentTimeMillis()));</span>
+<span class="nc" id="L42">		((Elbe) this.state).initWEKA(WEKAPath);</span>
+<span class="nc" id="L43">		((Elbe) this.state).setElbeWithUI(this);</span>
+<span class="nc" id="L44">		this.display = display;</span>
+<span class="nc" id="L45">		this.displayFrame = jFrame;</span>
+<span class="nc" id="L46">	}</span>
+
+	/**
+	 * Start the Simulation with a given state
+	 *
+	 * @param state The state to start at
+	 */
+	public ElbeWithUI(SimState state) {
+<span class="fc" id="L54">		super(state);</span>
+<span class="fc" id="L55">	}</span>
+
+	/**
+	 * Allow the user to inspect the model
+	 */
+	public Object getSimulationInspectedObject() {
+<span class="fc" id="L61">		return state;</span>
+	}
+
+	/**
+	 * @return The name of the simulation
+	 */
+	public static String getName() {
+<span class="fc" id="L68">		return &quot;Elbe Simulation&quot;;</span>
+	}
+
+	/**
+	 * Set up our views
+	 */
+	public void setupPortrayals() {
+
+<span class="nc" id="L76">		Elbe elbe = (Elbe) state;</span>
+
+		// Draw the tide values
+<span class="nc" id="L79">		tidesPortrayal.setField(elbe.tidesMap);</span>
+<span class="nc" id="L80">		tidesPortrayal.setMap(new SimpleColorMap(15, 20, Color.WHITE, new Color(30, 30, 255)));</span>
+
+		// Show the Elbe map
+<span class="nc" id="L83">		elbePortrayal.setField(elbe.elbeMap);</span>
+
+		// Set the colors for the Elbe map
+<span class="nc" id="L86">		Color[] colorMap = new Color[4];</span>
+<span class="nc" id="L87">		colorMap[0] = new Color(203, 230, 163, 255);        // landmass</span>
+<span class="nc" id="L88">		colorMap[1] = new Color(0, 0, 0, 0);                // transparent water (values given by tides)</span>
+<span class="nc" id="L89">		colorMap[2] = new Color(90, 164, 255, 255);        // water (open sea spawn point)</span>
+<span class="nc" id="L90">		colorMap[3] = new Color(237, 65, 62, 255);        // hamburg dockyard</span>
+<span class="nc" id="L91">		elbePortrayal.setMap(new SimpleColorMap(colorMap));</span>
+
+		// Map the vessels
+<span class="nc" id="L94">		vesselPortrayal.setField(elbe.vesselGrid);</span>
+
+		// reschedule the display
+<span class="nc" id="L97">		display.reset();</span>
+
+		// redraw the display
+<span class="nc" id="L100">		display.repaint();</span>
+<span class="nc" id="L101">	}</span>
+
+	/**
+	 * Load a specific state
+	 *
+	 * @param state The state to be simulated
+	 */
+	public void load(SimState state) {
+<span class="nc" id="L109">		super.load(state);</span>
+		// we now have new grids. Set up the portrayals to reflect that
+<span class="nc" id="L111">		setupPortrayals();</span>
+<span class="nc" id="L112">	}</span>
+
+	/**
+	 * Initialize the view
+	 *
+	 * @param controller Initial controller
+	 */
+	public void init(Controller controller) {
+<span class="nc" id="L120">		super.init(controller);</span>
+
+		// Make the Display2D. We'll have it display stuff later.
+<span class="nc" id="L123">		display = new Display2D(1200, 350, this); // At 10x510, we've got 10x10 per array position</span>
+<span class="nc" id="L124">		display.setScale(scale);</span>
+<span class="nc" id="L125">		displayFrame = display.createFrame();</span>
+<span class="nc" id="L126">		controller.registerFrame(displayFrame);   // Register the frame so it appears in the &quot;Display&quot; list</span>
+<span class="nc" id="L127">		displayFrame.setVisible(true);</span>
+
+		// Attach the portrayals from bottom to top
+<span class="nc" id="L130">		display.attach(tidesPortrayal, &quot;Tides&quot;);</span>
+<span class="nc" id="L131">		display.attach(elbePortrayal, &quot;Elbe Map&quot;);</span>
+<span class="nc" id="L132">		display.attach(vesselPortrayal, &quot;Vessels&quot;);</span>
+
+		// specify the backdrop color  -- what gets painted behind the displays
+<span class="nc" id="L135">		display.setBackdrop(new Color(80, 80, 80, 255)); // landmass</span>
+
+		// set up our portrayals
+<span class="nc" id="L138">		setupPortrayals();</span>
+<span class="nc" id="L139">	}</span>
+
+	/**
+	 * Quit the simulation
+	 */
+	public void quit() {
+<span class="fc" id="L145">		super.quit();</span>
+
+		// disposing the displayFrame automatically calls quit() on the display,
+		// so we don't need to do so ourselves here.
+<span class="pc bpc" id="L149" title="1 of 2 branches missed.">		if (displayFrame != null) displayFrame.dispose();</span>
+<span class="fc" id="L150">		displayFrame = null;  // let gc</span>
+<span class="fc" id="L151">		display = null;       // let gc</span>
+<span class="fc" id="L152">	}</span>
+
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

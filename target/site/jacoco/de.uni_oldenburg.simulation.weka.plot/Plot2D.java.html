@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Plot2D.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">elbe</a> &gt; <a href="index.source.html" class="el_package">de.uni_oldenburg.simulation.weka.plot</a> &gt; <span class="el_source">Plot2D.java</span></div><h1>Plot2D.java</h1><pre class="source lang-java linenums">package de.uni_oldenburg.simulation.weka.plot;
+
+import weka.core.Instances;
+import weka.gui.beans.ModelPerformanceChart;
+import weka.gui.beans.ThresholdDataEvent;
+import weka.gui.visualize.PlotData2D;
+
+/**
+ * Implements {@link Plot} to enable a 2D plot of the data. You can switch the axis.
+ */
+<span class="fc" id="L11">public class Plot2D implements Plot {</span>
+
+	private javax.swing.JFrame jf;
+
+	@Override
+	public void plot(Instances instances) throws Exception {
+<span class="nc" id="L17">		jf = new javax.swing.JFrame();</span>
+<span class="nc" id="L18">		jf.getContentPane().setLayout(new java.awt.BorderLayout());</span>
+
+<span class="nc" id="L20">		jf.addWindowListener(new java.awt.event.WindowAdapter() {</span>
+			public void windowClosing(java.awt.event.WindowEvent e) {
+<span class="nc" id="L22">				jf.dispose();</span>
+<span class="nc" id="L23">			}</span>
+		});
+<span class="nc" id="L25">		jf.setSize(width, height);</span>
+<span class="nc" id="L26">		weka.gui.visualize.Plot2D plot2D = new weka.gui.visualize.Plot2D();</span>
+<span class="nc" id="L27">		plot2D.setInstances(instances);</span>
+<span class="nc" id="L28">		final ModelPerformanceChart as = new ModelPerformanceChart();</span>
+<span class="nc" id="L29">		PlotData2D pd = new PlotData2D(instances);</span>
+<span class="nc" id="L30">		pd.setPlotName(instances.relationName());</span>
+<span class="nc" id="L31">		ThresholdDataEvent roc = new ThresholdDataEvent(as, pd);</span>
+<span class="nc" id="L32">		as.acceptDataSet(roc);</span>
+<span class="nc" id="L33">		jf.getContentPane().add(as, java.awt.BorderLayout.CENTER);</span>
+
+<span class="nc" id="L35">		jf.setVisible(true);</span>
+<span class="nc" id="L36">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,684 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Elbe.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">elbe</a> &gt; <a href="index.source.html" class="el_package">de.uni_oldenburg.simulation.elbe</a> &gt; <span class="el_source">Elbe.java</span></div><h1>Elbe.java</h1><pre class="source lang-java linenums">package de.uni_oldenburg.simulation.elbe;
+
+import de.uni_oldenburg.simulation.weka.CollisionWeka;
+import de.uni_oldenburg.simulation.weka.WaterLevelWeka;
+import de.uni_oldenburg.simulation.elbe.models.DynamicWaterLevel;
+import de.uni_oldenburg.simulation.vessels.*;
+import sim.field.continuous.Continuous2D;
+import sim.engine.Schedule;
+import sim.engine.SimState;
+import sim.engine.Steppable;
+import sim.field.grid.DoubleGrid2D;
+import sim.field.grid.IntGrid2D;
+import sim.util.Double2D;
+
+import java.util.ArrayList;
+
+/**
+ * The Elbe class is the system of the simulation. The class starts the simulation, organizes the schedules, ships, tide and different counter for the Weka evaluation.
+ */
+public class Elbe extends SimState {
+
+	public IntGrid2D elbeMap;
+	public DoubleGrid2D tidesMap;
+	public Continuous2D vesselGrid;
+
+<span class="fc" id="L26">	private final int[] FAIRWAY_LENGTH = {966, 704, 65, 154, 135};</span>
+<span class="fc" id="L27">	private final int[] FAIRWAY_WIDTH_NOT_EXTENDED = {400, 300, 250, 250, 230};</span>
+<span class="fc" id="L28">	private final int[] FAIRWAY_WIDTH_EXTENDED = {400, 320, 385, 270, 250};</span>
+<span class="fc" id="L29">	private int[] FAIRWAY_WIDTH = FAIRWAY_WIDTH_NOT_EXTENDED;</span>
+<span class="fc" id="L30">	private final int MARGIN = 25;</span>
+
+	private DynamicWaterLevel dynamicWaterLevel;
+<span class="fc" id="L33">	private final double DEPTH_REGULAR = 16.98;</span>
+<span class="fc" id="L34">	private final double DEPTH_DEEPENED = 17.4;</span>
+<span class="fc" id="L35">	private double depthOfWaterBelowCD = DEPTH_REGULAR;</span>
+<span class="fc" id="L36">	private boolean isTideActive = true;</span>
+
+
+<span class="fc" id="L39">	private boolean isExtended = false;</span>
+	private int fairwayLengthTotal;
+	private int fairwayWidthMax;
+	private int spawnPositionX;
+	private int dockyardPositionX;
+	private int gridHeight;
+	private int gridWidth;
+<span class="fc" id="L46">	private final int FAIRWAY_ID = 1;</span>
+<span class="fc" id="L47">	private final int SEA_POINT_ID = 2;</span>
+<span class="fc" id="L48">	private final int DOCKYARD_POINT_ID = 3;</span>
+
+<span class="fc" id="L50">	int lastShipArrivedFromDocks = 15;</span>
+<span class="fc" id="L51">	int lastShipArrivedFromSea = 15;</span>
+
+<span class="fc" id="L53">	private double humanErrorInShipLength = 15;</span>
+<span class="fc" id="L54">	private double securityLevelGroundToDraught = 2.5; // TODO is that correct?</span>
+
+	// WEKA
+	private WaterLevelWeka waterLevelWEKA;
+	private CollisionWeka collisionWEKA;
+<span class="fc" id="L59">	private boolean evaluate = false;</span>
+
+	private int numLargeContainerShips;
+	private int numLargeContainerShipsSinceLastMeasurement;
+	private int numSmallContainerShips;
+	private int numSmallContainerShipsSinceLastMeasurement;
+	private int numLargeTanker;
+	private int numLargeTankerSinceLastMeasurement;
+	private int numSmallTanker;
+	private int numSmallTankerSinceLastMeasurement;
+
+	private int collisionCount;
+	private int waitingShipsCount;
+	// Tide
+<span class="fc" id="L73">	private final long HIGHT_TIDE_PERIOD = 19670 / 30;</span>
+<span class="fc" id="L74">	private final long LOW_TIDE_PERIOD = 24505 / 30;</span>
+
+	// Auxiliary properties
+<span class="fc" id="L77">	private boolean ranAlready = false;</span>
+	private ElbeWithUI elbeWithUI;
+<span class="fc" id="L79">	private final double elbeLengthToHamburg = 84900; // in meter</span>
+<span class="fc" id="L80">	private double scale = 50;</span>
+<span class="fc" id="L81">	private int minimumShips = 10;</span>
+
+	public Elbe(long seed) {
+<span class="fc" id="L84">		super(seed);</span>
+<span class="fc" id="L85">		renderElbe();</span>
+<span class="fc" id="L86">	}</span>
+
+	/**
+	 * Start the simulation
+	 */
+	public void start() {
+<span class="fc" id="L92">		numLargeContainerShips = 0;</span>
+<span class="fc" id="L93">		numLargeContainerShipsSinceLastMeasurement = 0;</span>
+<span class="fc" id="L94">		numSmallContainerShips = 0;</span>
+<span class="fc" id="L95">		numSmallContainerShipsSinceLastMeasurement = 0;</span>
+<span class="fc" id="L96">		numLargeTanker = 0;</span>
+<span class="fc" id="L97">		numLargeTankerSinceLastMeasurement = 0;</span>
+<span class="fc" id="L98">		numSmallTanker = 0;</span>
+<span class="fc" id="L99">		numSmallTankerSinceLastMeasurement = 0;</span>
+<span class="fc" id="L100">		collisionCount = 0;</span>
+<span class="fc" id="L101">		waitingShipsCount = 0;</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">		if (ranAlready) {</span>
+<span class="nc" id="L103">			elbeWithUI.setupPortrayals();</span>
+		} else {
+<span class="fc" id="L105">			ranAlready = true;</span>
+		}
+<span class="fc" id="L107">		super.start(); // clear out the schedule</span>
+
+		// Schedule Tides
+<span class="fc" id="L110">		schedule.scheduleRepeating(Schedule.EPOCH, 1, (Steppable) (SimState state) -&gt; {</span>
+<span class="fc" id="L111">			double[] currentWaterLevels = dynamicWaterLevel.getCurrentWaterLevels(schedule.getSteps());</span>
+<span class="fc bfc" id="L112" title="All 2 branches covered.">			for (int x = 0; x &lt; gridWidth; x++) {</span>
+<span class="fc" id="L113">				double waterLevel = depthOfWaterBelowCD + currentWaterLevels[x];</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">				for (int y = 0; y &lt; gridHeight; y++) {</span>
+<span class="fc" id="L115">					tidesMap.set(x, y, waterLevel);</span>
+				}
+				// weka entries
+<span class="fc bfc" id="L118" title="All 2 branches covered.">				if (x % 10 == 0)</span>
+<span class="fc" id="L119">					waterLevelWEKA.addWEKAEntry(new Object[]{schedule.getSteps(), x, waterLevel});</span>
+			}
+			// weka entries
+<span class="pc bpc" id="L122" title="2 of 4 branches missed.">			if (schedule.getSteps() % (HIGHT_TIDE_PERIOD + LOW_TIDE_PERIOD) == 0 &amp;&amp; schedule.getSteps() != 0) {</span>
+<span class="nc" id="L123">				collisionWEKA.addWEKAEntry(new Object[]{schedule.getSteps(), isTideActive(), getIsExtended(),</span>
+<span class="nc" id="L124">						numLargeContainerShips + numLargeContainerShipsSinceLastMeasurement, numSmallContainerShips + numSmallContainerShipsSinceLastMeasurement, numLargeTanker + numLargeTankerSinceLastMeasurement,</span>
+<span class="nc" id="L125">						numSmallTanker + numSmallTankerSinceLastMeasurement, collisionCount, humanErrorInShipLength, waitingShipsCount, securityLevelGroundToDraught});</span>
+<span class="nc" id="L126">				numLargeContainerShipsSinceLastMeasurement = 0;</span>
+<span class="nc" id="L127">				numSmallContainerShipsSinceLastMeasurement = 0;</span>
+<span class="nc" id="L128">				numLargeTankerSinceLastMeasurement = 0;</span>
+<span class="nc" id="L129">				numSmallTankerSinceLastMeasurement = 0;</span>
+<span class="nc" id="L130">				collisionCount = 0; // reset collisions</span>
+<span class="nc" id="L131">				waitingShipsCount = 0; // reset waitingShips</span>
+			}
+<span class="fc" id="L133">		}, 1);</span>
+
+<span class="fc" id="L135">		vesselGrid.clear();</span>
+
+		// Dynamically spawn new vessels
+<span class="fc" id="L138">		schedule.scheduleRepeating(Schedule.EPOCH, 1, (Steppable) (SimState state) -&gt; {</span>
+
+			// Spawn vessels coming from sea
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">			if (newShipArrivedFromSea()) {</span>
+<span class="fc" id="L142">				AbstractVessel newVessel = getNewVessel(true);</span>
+<span class="fc bfc" id="L143" title="All 2 branches covered.">				if (!vesselNeedsToWait(newVessel)) {</span>
+<span class="fc" id="L144">					vesselGrid.setObjectLocation(newVessel, new Double2D(0, 380));</span>
+<span class="fc" id="L145">					schedule.scheduleRepeating(newVessel, 1);</span>
+<span class="fc" id="L146">					increaseShipCount(newVessel);</span>
+				}
+			}
+
+			// Spawn vessels coming from docks
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">			if (newShipArrivedFromDocks()) {</span>
+<span class="fc" id="L152">				AbstractVessel newVessel = getNewVessel(false);</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">				if (!vesselNeedsToWait(newVessel)) {</span>
+<span class="fc" id="L154">					vesselGrid.setObjectLocation(newVessel, new Double2D(gridWidth - 1, 170));</span>
+<span class="fc" id="L155">					schedule.scheduleRepeating(newVessel, 1);</span>
+<span class="fc" id="L156">					increaseShipCount(newVessel);</span>
+				}
+			}
+
+<span class="fc" id="L160">			checkForCollision();</span>
+
+<span class="fc" id="L162">		}, 1);</span>
+<span class="fc" id="L163">	}</span>
+
+	/**
+	 * Checks whether  a new vessel needs to wait at Cuxhaven or Hamnburg. To decide whether the ship can enter the Elbe the time needed by the vessel to get to the other end is approximated and for each time step within this interval the draught of the ship is compared to the water level and the security gap to the ground.
+	 *
+	 * @param newVessel The new vessel that wants to enter the elbe.
+	 * @return A boolean value whether the vessel can enter the Elbe (false) or needs to wait (true).
+	 */
+	private boolean vesselNeedsToWait(AbstractVessel newVessel) {
+
+		// determine worstCaseTime
+<span class="fc" id="L174">		double averageDistanzAtStep = newVessel.getTargetSpeed() / scale;</span>
+<span class="fc" id="L175">		double averageTimeNeeded = (double) gridWidth / averageDistanzAtStep;</span>
+
+<span class="fc bfc" id="L177" title="All 2 branches covered.">		for (double timeStep = 0; timeStep &lt;= averageTimeNeeded; timeStep++) {</span>
+<span class="fc" id="L178">			double expetedWaterLevelAtXAndTime = depthOfWaterBelowCD + dynamicWaterLevel.getFutureWaterLevelAtTimePosition((long) (timeStep + schedule.getSteps()), (int) (averageDistanzAtStep * timeStep));</span>
+<span class="fc bfc" id="L179" title="All 2 branches covered.">			if (expetedWaterLevelAtXAndTime - securityLevelGroundToDraught &lt; newVessel.getDraught()) {</span>
+				//System.out.println(newVessel.getClass().getSimpleName() + &quot; needs to wait: ExpectedWaterLevel at (&quot; + averageDistanzAtStep * timeStep + &quot;, &quot; + (timeStep + schedule.getSteps()) + &quot;) (x,t) is &quot; + expetedWaterLevelAtXAndTime + &quot; with SCN &quot; + depthOfWaterBelowCD + &quot; and draught &quot; + newVessel.getdraught() + &quot; and securityLevel &quot; + securityLevelGroundToDraught + &quot; meters.&quot;);
+<span class="fc" id="L181">				waitingShipsCount++;</span>
+<span class="fc" id="L182">				return true;</span>
+			}
+		}
+
+<span class="fc" id="L186">		return false;</span>
+	}
+
+	/**
+	 * A method that checks for land and ship collisions by using the ships upper and lower limits in both the x and y coordinate. For land collisions the upper and lower y limits of the elbe are compared to those of the ship. The method removes a ship if a collision is detected.
+	 */
+	private void checkForCollision() {
+<span class="fc" id="L193">		ArrayList&lt;AbstractVessel&gt; vessels = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L194">		ArrayList&lt;AbstractVessel&gt; toRemove = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L195" title="All 2 branches covered.">		for (Object object : vesselGrid.getAllObjects()) {</span>
+<span class="fc" id="L196">			AbstractVessel abstractVessel = (AbstractVessel) object;</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">			if (shipIsAshore(abstractVessel)) {</span>
+<span class="nc" id="L198">				toRemove.add(abstractVessel);</span>
+<span class="nc" id="L199">				collisionCount++;</span>
+			} else {
+<span class="fc" id="L201">				vessels.add(abstractVessel);</span>
+			}
+<span class="fc" id="L203">		}</span>
+
+<span class="fc bfc" id="L205" title="All 2 branches covered.">		for (AbstractVessel vessel1 : vessels) {</span>
+<span class="fc bfc" id="L206" title="All 2 branches covered.">			for (AbstractVessel vessel2 : vessels) {</span>
+<span class="pc bpc" id="L207" title="3 of 4 branches missed.">				if (!toRemove.contains(vessel1) || !toRemove.contains(vessel2)) { // must be or connection if three or mor hips collide</span>
+<span class="fc" id="L208">					double widthFromCenter1 = vessel1.getWidth() / 2;</span>
+<span class="fc" id="L209">					double lengthFromCenter1 = vessel1.getLength() / 2 / scale;</span>
+<span class="fc" id="L210">					double widthFromCenter2 = vessel2.getWidth() / 2;</span>
+<span class="fc" id="L211">					double lengthFromCenter2 = vessel2.getLength() / 2 / scale;</span>
+
+<span class="pc bpc" id="L213" title="5 of 6 branches missed.">					if (vessel1.getCurrentPosition() != null &amp;&amp; vessel2.getCurrentPosition() != null &amp;&amp; !vessel1.equals(vessel2)) {</span>
+<span class="nc" id="L214">						double x1 = vessel1.getCurrentPosition().getX();</span>
+<span class="nc" id="L215">						double x2 = vessel2.getCurrentPosition().getX();</span>
+<span class="nc" id="L216">						double y1 = vessel1.getCurrentPosition().getY();</span>
+<span class="nc" id="L217">						double y2 = vessel2.getCurrentPosition().getY();</span>
+
+<span class="nc" id="L219">						double x1LesserBound = x1 - lengthFromCenter1;</span>
+<span class="nc" id="L220">						double x1UpperBound = x1 + lengthFromCenter1;</span>
+<span class="nc" id="L221">						double x2LesserBound = x2 - lengthFromCenter2;</span>
+<span class="nc" id="L222">						double x2UpperBound = x2 + lengthFromCenter2;</span>
+
+<span class="nc" id="L224">						double y1LesserBound = y1 - widthFromCenter1;</span>
+<span class="nc" id="L225">						double y1UpperBound = y1 + widthFromCenter1;</span>
+<span class="nc" id="L226">						double y2LesserBound = y2 - widthFromCenter2;</span>
+<span class="nc" id="L227">						double y2UpperBound = y2 + widthFromCenter2;</span>
+
+<span class="nc bnc" id="L229" title="All 20 branches missed.">						if (x1UpperBound &gt;= x2LesserBound &amp;&amp; x1UpperBound &lt;= x2UpperBound</span>
+								&amp;&amp; ((y2LesserBound &lt;= y1LesserBound &amp;&amp; y1LesserBound &lt;= y2UpperBound)
+								|| (y2LesserBound &lt;= y1UpperBound &amp;&amp; y1UpperBound &lt;= y2UpperBound)
+								|| (y1LesserBound &lt;= y2LesserBound &amp;&amp; y2LesserBound &lt;= y1UpperBound)
+								|| (y1LesserBound &lt;= y2UpperBound &amp;&amp; y2UpperBound &lt;= y1UpperBound))) { // rear-end collision from wilhelmshaven
+							//System.out.println(&quot;Collision with:\n&quot; +
+							//		&quot;x1_less: &quot; + x1LesserBound + &quot;, x1_upper: &quot; + x1UpperBound + &quot; to x2_less: &quot; + x2LesserBound + &quot;, x2_upper: &quot; + x2UpperBound + &quot;\n&quot; +
+							//		&quot;y1_less: &quot; + y1LesserBound + &quot;, y1_upper: &quot; + y1UpperBound + &quot; to y2_less: &quot; + y2LesserBound + &quot;, y2_upper: &quot; + y2UpperBound + &quot;\n&quot;);
+<span class="nc" id="L237">							toRemove.add(vessel1);</span>
+<span class="nc" id="L238">							toRemove.add(vessel2);</span>
+<span class="nc" id="L239">							collisionCount++;</span>
+<span class="nc bnc" id="L240" title="All 20 branches missed.">						} else if (x1LesserBound &lt;= x2UpperBound &amp;&amp; x1LesserBound &gt;= x2LesserBound</span>
+								&amp;&amp; ((y2LesserBound &lt;= y1LesserBound &amp;&amp; y1LesserBound &lt;= y2UpperBound)
+								|| (y2LesserBound &lt;= y1UpperBound &amp;&amp; y1UpperBound &lt;= y2UpperBound)
+								|| (y1LesserBound &lt;= y2LesserBound &amp;&amp; y2LesserBound &lt;= y1UpperBound)
+								|| (y1LesserBound &lt;= y2UpperBound &amp;&amp; y2UpperBound &lt;= y1UpperBound))) { // frontal collision1
+							//System.out.println(&quot;Collision with:\n&quot; +
+							//		&quot;x1_less: &quot; + x1LesserBound + &quot;, x1_upper: &quot; + x1UpperBound + &quot; to x2_less: &quot; + x2LesserBound + &quot;, x2_upper: &quot; + x2UpperBound + &quot;\n&quot; +
+							//		&quot;y1_less: &quot; + y1LesserBound + &quot;, y1_upper: &quot; + y1UpperBound + &quot; to y2_less: &quot; + y2LesserBound + &quot;, y2_upper: &quot; + y2UpperBound + &quot;\n&quot;);
+<span class="nc" id="L248">							toRemove.add(vessel1);</span>
+<span class="nc" id="L249">							toRemove.add(vessel2);</span>
+<span class="nc" id="L250">							collisionCount++;</span>
+						}
+					}
+				}
+<span class="fc" id="L254">			}</span>
+<span class="fc" id="L255">		}</span>
+<span class="pc bpc" id="L256" title="1 of 2 branches missed.">		for (AbstractVessel vessel : toRemove) {</span>
+<span class="nc" id="L257">			vesselGrid.remove(vessel);</span>
+<span class="nc" id="L258">			decreaseShipCount(vessel); // decrease from the counter</span>
+			//System.out.println(collisionCount);
+<span class="nc" id="L260">		}</span>
+<span class="fc" id="L261">	}</span>
+
+	/**
+	 * A method to check whether a ship is ashore or has hit the shore.
+	 *
+	 * @param abstractVessel The vessel to check.
+	 * @return A boolean value whether the ships is ashore (true) or not (false).
+	 */
+	private boolean shipIsAshore(AbstractVessel abstractVessel) {
+
+<span class="fc" id="L271">		Double2D double2D = abstractVessel.getCurrentPosition();</span>
+<span class="pc bpc" id="L272" title="1 of 2 branches missed.">		if (double2D != null) {</span>
+			// System.out.println(&quot;Pos: &quot; + double2D.getX() + &quot;,&quot; +
+<span class="nc" id="L274">			double x = double2D.getX();</span>
+<span class="nc" id="L275">			double y = double2D.getY();</span>
+
+<span class="nc" id="L277">			double widthFromShipsCenter = abstractVessel.getWidth() / 2;</span>
+<span class="nc" id="L278">			double lengthFromShipsCenter = abstractVessel.getLength() / 2;</span>
+
+<span class="nc bnc" id="L280" title="All 4 branches missed.">			if (elbeMap.get((int) x, (int) Math.ceil(y + widthFromShipsCenter)) == 0 || elbeMap.get((int) x, (int) Math.floor(y - widthFromShipsCenter)) == 0) // 0 is ashore</span>
+<span class="nc" id="L281">				return true;</span>
+		}
+<span class="fc" id="L283">		return false;</span>
+	}
+
+	/**
+	 * Decides whether a new ship arrived from sea.
+	 *
+	 * @return A boolean value determine whether a new ship has arrived (true) or not (false).
+	 */
+	private boolean newShipArrivedFromSea() {
+
+<span class="pc bpc" id="L293" title="1 of 2 branches missed.">		if (lastShipArrivedFromSea &lt; 15) {</span>
+<span class="nc" id="L294">			lastShipArrivedFromSea++;</span>
+		} else {
+<span class="fc" id="L296">			lastShipArrivedFromSea = 0;</span>
+<span class="pc bpc" id="L297" title="3 of 4 branches missed.">			return !(vesselGrid.getAllObjects().size() &gt;= minimumShips) || random.nextBoolean(0.02);</span>
+		}
+<span class="nc" id="L299">		return false;</span>
+	}
+
+	/**
+	 * Decides whether a new ship arrived from the docks (Hamburg).
+	 *
+	 * @return A boolean value determine whether a new ship has arrived (true) or not (false).
+	 */
+	private boolean newShipArrivedFromDocks() {
+
+<span class="pc bpc" id="L309" title="1 of 2 branches missed.">		if (lastShipArrivedFromDocks &lt; 15) {</span>
+<span class="nc" id="L310">			lastShipArrivedFromDocks++;</span>
+		} else {
+<span class="fc" id="L312">			lastShipArrivedFromDocks = 0;</span>
+<span class="pc bpc" id="L313" title="3 of 4 branches missed.">			return !(vesselGrid.getAllObjects().size() &gt;= minimumShips) || random.nextBoolean(0.02);</span>
+		}
+<span class="nc" id="L315">		return false;</span>
+	}
+
+	/**
+	 * Gets a new vessel and sets the vessel direction by using the passed argument. The vessel type is decided by using two random values and the distribution researched by real the real data.
+	 *
+	 * @param directionHamburg Whether the ship is to be started from Hamburg or not.
+	 * @return The new vessel as its abstract super class.
+	 */
+	private AbstractVessel getNewVessel(boolean directionHamburg) {
+
+<span class="fc" id="L326">		double randomValue = random.nextDouble();</span>
+<span class="fc" id="L327">		double randomVesselType = random.nextDouble(false, true) * 100;</span>
+
+<span class="fc bfc" id="L329" title="All 2 branches covered.">		if (randomValue &lt; 0.79) { // 79% of Vessels are Cargos</span>
+			//Tanker or Cargo
+			/* Cargo
+			 * 3x 	16x400x60 	22kn 3%
+			 * 10x 	15.5x365x50 24kn 10%
+			 * 16x 	15x300x30	24kn 17%
+			 * 18x 	15x210x30	14kn 19%
+			 * 21x	10x155x25	 	 22%
+			 * 24x	6x110x17 	13kn 26%
+			 */
+<span class="pc bpc" id="L339" title="1 of 2 branches missed.">			if (randomVesselType &lt;= 3) {</span>
+<span class="nc" id="L340">				return new LargeContainer(directionHamburg, humanErrorInShipLength, scale, 16, 400, 60, 15);</span>
+<span class="pc bpc" id="L341" title="3 of 6 branches missed.">			} else if (3 &lt; randomVesselType &amp; randomVesselType &lt;= 13) {</span>
+<span class="nc" id="L342">				return new LargeContainer(directionHamburg, humanErrorInShipLength, scale, 15.5, 365, 50, 15);</span>
+<span class="pc bpc" id="L343" title="1 of 6 branches missed.">			} else if (13 &lt; randomVesselType &amp; randomVesselType &lt;= 30) {</span>
+<span class="fc" id="L344">				return new LargeContainer(directionHamburg, humanErrorInShipLength, scale, 15, 300, 30, 15);</span>
+<span class="pc bpc" id="L345" title="3 of 6 branches missed.">			} else if (30 &lt; randomVesselType &amp; randomVesselType &lt;= 49) {</span>
+<span class="nc" id="L346">				return new SmallContainer(directionHamburg, humanErrorInShipLength, scale, 15, 210, 30, 14);</span>
+<span class="pc bpc" id="L347" title="3 of 6 branches missed.">			} else if (49 &lt; randomVesselType &amp; randomVesselType &lt;= 71) {</span>
+<span class="fc" id="L348">				return new SmallContainer(directionHamburg, humanErrorInShipLength, scale, 10, 155, 25, 14);</span>
+			} else {
+<span class="nc" id="L350">				return new SmallContainer(directionHamburg, humanErrorInShipLength, scale, 6, 110, 17, 13);</span>
+			}
+		} else {
+			/*
+			 * Tanker
+			 * 1x 8x250x45		13kn 4%
+			 * 3x 12x180x29 	15kn 12%
+			 * 3x 6x138x21 		10kn 12%
+			 * 7x 6x117x17 		15kn 28%
+			 * 6x 7x100x16 		13kn 24%
+			 * 5x 4x70x12 		12kn 20%
+			 */
+<span class="pc bpc" id="L362" title="1 of 2 branches missed.">			if (randomVesselType &lt;= 4) {</span>
+<span class="nc" id="L363">				return new LargeTanker(directionHamburg, humanErrorInShipLength, scale, 8, 250, 45, 13);</span>
+<span class="pc bpc" id="L364" title="3 of 6 branches missed.">			} else if (4 &lt; randomVesselType &amp; randomVesselType &lt;= 16) {</span>
+<span class="fc" id="L365">				return new LargeTanker(directionHamburg, humanErrorInShipLength, scale, 12, 180, 29, 15);</span>
+<span class="nc bnc" id="L366" title="All 6 branches missed.">			} else if (16 &lt; randomVesselType &amp; randomVesselType &lt;= 28) {</span>
+<span class="nc" id="L367">				return new LargeTanker(directionHamburg, humanErrorInShipLength, scale, 6, 138, 21, 10);</span>
+<span class="nc bnc" id="L368" title="All 6 branches missed.">			} else if (28 &lt; randomVesselType &amp; randomVesselType &lt;= 56) {</span>
+<span class="nc" id="L369">				return new LargeTanker(directionHamburg, humanErrorInShipLength, scale, 6, 117, 17, 15);</span>
+<span class="nc bnc" id="L370" title="All 6 branches missed.">			} else if (56 &lt; randomVesselType &amp; randomVesselType &lt;= 80) {</span>
+<span class="nc" id="L371">				return new SmallTanker(directionHamburg, humanErrorInShipLength, scale, 7, 100, 16, 13);</span>
+			} else {
+<span class="nc" id="L373">				return new SmallTanker(directionHamburg, humanErrorInShipLength, scale, 4, 70, 12, 12);</span>
+			}
+		}
+	}
+
+	@Override
+	public void finish() {
+<span class="nc bnc" id="L380" title="All 2 branches missed.">		if (evaluate) {</span>
+<span class="nc" id="L381">			waterLevelWEKA.writeWEKAEntries();</span>
+<span class="nc" id="L382">			collisionWEKA.writeWEKAEntries();</span>
+<span class="nc" id="L383">			waterLevelWEKA.plotWEKAEntries();</span>
+<span class="nc" id="L384">			collisionWEKA.plotWEKAEntries();</span>
+		}
+<span class="nc" id="L386">		super.finish();</span>
+<span class="nc" id="L387">		resetWEKA();</span>
+<span class="nc" id="L388">	}</span>
+
+	/**
+	 * Draws the Elbe, the boat spawn area and the Hamburg dockyard onto the simulation map
+	 */
+	private void drawObjects() {
+		// Init Elbe area
+<span class="fc" id="L395">		int tempLengthHelper = 0;</span>
+<span class="fc" id="L396">		int tempWidthHelper = 0;</span>
+<span class="fc bfc" id="L397" title="All 2 branches covered.">		for (int elbeSection = 0; elbeSection &lt; FAIRWAY_LENGTH.length; elbeSection++) {</span>
+			try {
+<span class="fc" id="L399">				tempWidthHelper = (FAIRWAY_WIDTH[elbeSection] - FAIRWAY_WIDTH[elbeSection + 1]) / 2;</span>
+<span class="fc" id="L400">			} catch (ArrayIndexOutOfBoundsException ignored) {</span>
+<span class="fc" id="L401">			}</span>
+
+			// Init blocks for elbe sections
+<span class="fc bfc" id="L404" title="All 2 branches covered.">			for (int i = MARGIN + tempLengthHelper; i &lt; (MARGIN + tempLengthHelper + FAIRWAY_LENGTH[elbeSection]) - tempWidthHelper; i++) { // from left to right</span>
+<span class="fc bfc" id="L405" title="All 2 branches covered.">				for (int j = ((fairwayWidthMax - FAIRWAY_WIDTH[elbeSection]) / 2) + MARGIN; j &lt; (((fairwayWidthMax - FAIRWAY_WIDTH[elbeSection]) / 2) + MARGIN + FAIRWAY_WIDTH[elbeSection]); j++) { // from top to bottom</span>
+<span class="fc" id="L406">					elbeMap.field[i][j] = FAIRWAY_ID;</span>
+				}
+			}
+
+			// Calculate width transitions
+<span class="fc" id="L411">			int tempTopIndex = ((fairwayWidthMax - FAIRWAY_WIDTH[elbeSection]) / 2) + MARGIN;</span>
+<span class="fc" id="L412">			int tempBottomIndex = FAIRWAY_WIDTH[elbeSection] - tempWidthHelper;</span>
+			// Draw transitions if the following elbeSection is narrower than the previous one
+<span class="fc bfc" id="L414" title="All 2 branches covered.">			for (int i = (MARGIN + tempLengthHelper + FAIRWAY_LENGTH[elbeSection]) - tempWidthHelper; i &lt; (MARGIN + tempLengthHelper + FAIRWAY_LENGTH[elbeSection]); i++) {</span>
+<span class="fc bfc" id="L415" title="All 2 branches covered.">				for (int j = tempTopIndex; j &lt; tempTopIndex + tempWidthHelper + tempBottomIndex; j++) {</span>
+<span class="fc" id="L416">					elbeMap.field[i][j] = FAIRWAY_ID;</span>
+				}
+<span class="fc" id="L418">				tempTopIndex++;</span>
+<span class="fc" id="L419">				tempBottomIndex -= 2;</span>
+			}
+			// Draw transitions if the following elbeSection is wider than the previous one
+<span class="pc bpc" id="L422" title="1 of 2 branches missed.">			if (tempWidthHelper &lt; 0) {</span>
+<span class="nc" id="L423">				tempWidthHelper = tempWidthHelper * -1;</span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">				for (int i = (MARGIN + tempLengthHelper + FAIRWAY_LENGTH[elbeSection]) - tempWidthHelper; i &lt; (MARGIN + tempLengthHelper + FAIRWAY_LENGTH[elbeSection]); i++) {</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">					for (int j = tempTopIndex + tempBottomIndex - tempWidthHelper; j &gt; tempTopIndex - 2; j--) {</span>
+<span class="nc" id="L426">						elbeMap.field[i][j] = FAIRWAY_ID;</span>
+					}
+<span class="nc" id="L428">					tempTopIndex--;</span>
+<span class="nc" id="L429">					tempBottomIndex += 2;</span>
+				}
+			}
+<span class="fc" id="L432">			tempLengthHelper += FAIRWAY_LENGTH[elbeSection];</span>
+		}
+
+		// Init spawn area
+<span class="fc bfc" id="L436" title="All 2 branches covered.">		for (int i = ((fairwayWidthMax - FAIRWAY_WIDTH[0]) / 2) + MARGIN; i &lt; (((fairwayWidthMax - FAIRWAY_WIDTH[0]) / 2) + MARGIN + FAIRWAY_WIDTH[0]); i++) {</span>
+<span class="fc bfc" id="L437" title="All 2 branches covered.">			for (int j = 0; j &lt; MARGIN; j++) {</span>
+<span class="fc" id="L438">				elbeMap.field[spawnPositionX - (j + 1)][i] = SEA_POINT_ID;</span>
+			}
+		}
+
+		// Init dockyard
+<span class="fc" id="L443">		int lastTransitionWidth = (FAIRWAY_WIDTH[FAIRWAY_WIDTH.length - 2] - FAIRWAY_WIDTH[FAIRWAY_WIDTH.length - 1]) / 2;</span>
+<span class="fc bfc" id="L444" title="All 2 branches covered.">		for (int i = ((fairwayWidthMax - FAIRWAY_WIDTH[(FAIRWAY_WIDTH.length - 1)]) / 2) + MARGIN + lastTransitionWidth; i &lt; (((fairwayWidthMax - FAIRWAY_WIDTH[(FAIRWAY_WIDTH.length - 1)]) / 2) + MARGIN + FAIRWAY_WIDTH[(FAIRWAY_WIDTH.length - 1)]) - lastTransitionWidth; i++) {</span>
+<span class="fc bfc" id="L445" title="All 2 branches covered.">			for (int j = 0; j &lt; MARGIN; j++) {</span>
+<span class="fc" id="L446">				elbeMap.field[dockyardPositionX + j][i] = DOCKYARD_POINT_ID;</span>
+			}
+		}
+<span class="fc" id="L449">	}</span>
+
+	/**
+	 * Calculates the initial distances, the grid dimensions and the source/target point based on their relation and the given values
+	 */
+	private void calculateInitialValues() {
+		// fairwayWidthMax
+<span class="fc bfc" id="L456" title="All 2 branches covered.">		for (int width : FAIRWAY_WIDTH) {</span>
+<span class="fc bfc" id="L457" title="All 2 branches covered.">			if (width &gt; fairwayWidthMax) {</span>
+<span class="fc" id="L458">				fairwayWidthMax = width;</span>
+			}
+		}
+
+		// fairwayLengthTotal
+<span class="fc bfc" id="L463" title="All 2 branches covered.">		for (int length : FAIRWAY_LENGTH) {</span>
+<span class="fc" id="L464">			fairwayLengthTotal += length;</span>
+		}
+
+<span class="fc" id="L467">		gridHeight = fairwayWidthMax + (MARGIN * 2);</span>
+<span class="fc" id="L468">		gridWidth = fairwayLengthTotal + (MARGIN * 2);</span>
+
+<span class="fc" id="L470">		spawnPositionX = MARGIN;</span>
+<span class="fc" id="L471">		dockyardPositionX = fairwayLengthTotal + MARGIN;</span>
+<span class="fc" id="L472">	}</span>
+
+	/**
+	 * Initializes Weka witht the path to write the *.arff files and to check for already existing files.
+	 *
+	 * @param WEKAPath The Weka path either relative to the running jar file or absolute.
+	 */
+	public void initWEKA(final String WEKAPath) {
+<span class="fc" id="L480">		waterLevelWEKA = new WaterLevelWeka(WEKAPath);</span>
+<span class="fc" id="L481">		collisionWEKA = new CollisionWeka(WEKAPath);</span>
+<span class="fc" id="L482">	}</span>
+
+	/**
+	 * Resets the Weka instances and its values.
+	 */
+	public void resetWEKA() {
+<span class="nc" id="L488">		waterLevelWEKA.resetWEKA();</span>
+<span class="nc" id="L489">		collisionWEKA.resetWEKA();</span>
+<span class="nc" id="L490">	}</span>
+
+	/**
+	 * Increases the internal ship count for the passes vessels type.
+	 *
+	 * @param vessel The vessel for which the type is to be determined and the counter to be increased.
+	 */
+	public void increaseShipCount(AbstractVessel vessel) {
+<span class="pc bpc" id="L498" title="1 of 2 branches missed.">		if (vessel instanceof LargeContainer) {</span>
+<span class="nc" id="L499">			numLargeContainerShips++;</span>
+<span class="fc bfc" id="L500" title="All 2 branches covered.">		} else if (vessel instanceof SmallContainer) {</span>
+<span class="fc" id="L501">			numSmallContainerShips++;</span>
+<span class="pc bpc" id="L502" title="1 of 2 branches missed.">		} else if (vessel instanceof LargeTanker) {</span>
+<span class="fc" id="L503">			numLargeTanker++;</span>
+		} else { // small tanker
+<span class="nc" id="L505">			numSmallTanker++;</span>
+		}
+<span class="fc" id="L507">	}</span>
+
+	/**
+	 * Increases the internal ship count for the passes vessels type.
+	 *
+	 * @param vessel The vessel for which the type is to be determined and the counter to be decreased.
+	 */
+	public void decreaseShipCount(AbstractVessel vessel) {
+<span class="nc bnc" id="L515" title="All 2 branches missed.">		if (vessel instanceof LargeContainer) {</span>
+<span class="nc" id="L516">			numLargeContainerShips--;</span>
+<span class="nc" id="L517">			numLargeContainerShipsSinceLastMeasurement++;</span>
+<span class="nc bnc" id="L518" title="All 2 branches missed.">		} else if (vessel instanceof SmallContainer) {</span>
+<span class="nc" id="L519">			numSmallContainerShips--;</span>
+<span class="nc" id="L520">			numSmallContainerShipsSinceLastMeasurement++;</span>
+<span class="nc bnc" id="L521" title="All 2 branches missed.">		} else if (vessel instanceof LargeTanker) {</span>
+<span class="nc" id="L522">			numLargeTanker--;</span>
+<span class="nc" id="L523">			numLargeTankerSinceLastMeasurement++;</span>
+		} else { // small tanker
+<span class="nc" id="L525">			numSmallTanker--;</span>
+<span class="nc" id="L526">			numSmallTankerSinceLastMeasurement++;</span>
+		}
+<span class="nc" id="L528">	}</span>
+
+	/**
+	 * Renders the elbe given its different set of maps.
+	 */
+	private void renderElbe() {
+<span class="fc" id="L534">		calculateInitialValues();</span>
+<span class="fc" id="L535">		dynamicWaterLevel = new DynamicWaterLevel(gridWidth, HIGHT_TIDE_PERIOD, LOW_TIDE_PERIOD, true, isTideActive);</span>
+
+		// Initialize empty grids
+<span class="fc" id="L538">		elbeMap = new IntGrid2D(gridWidth, gridHeight, 0);</span>
+<span class="fc" id="L539">		tidesMap = new DoubleGrid2D(gridWidth, gridHeight, 0.0);</span>
+<span class="fc" id="L540">		vesselGrid = new Continuous2D(1, gridWidth, gridHeight);</span>
+
+		// Draw Elbe, spawn area and dockyard to the map
+<span class="fc" id="L543">		drawObjects();</span>
+<span class="fc" id="L544">	}</span>
+
+	/**
+	 * Renders the elbe given its different set of maps except the vessel grid. It does not calculate the initial values again.
+	 */
+	private void renderElbeWithoutInit() {
+<span class="nc" id="L550">		dynamicWaterLevel = new DynamicWaterLevel(gridWidth, HIGHT_TIDE_PERIOD, LOW_TIDE_PERIOD, true, isTideActive);</span>
+
+		// Initialize empty grids
+<span class="nc" id="L553">		elbeMap = new IntGrid2D(gridWidth, gridHeight, 0);</span>
+<span class="nc" id="L554">		tidesMap = new DoubleGrid2D(gridWidth, gridHeight, 0.0);</span>
+		//vesselGrid = new Continuous2D(1, gridWidth, gridHeight);
+
+		// Draw Elbe, spawn area and dockyard to the map
+<span class="nc" id="L558">		drawObjects();</span>
+<span class="nc" id="L559">	}</span>
+
+	// Geter and Setter
+
+	public double getDepthOfWaterBelowCD() {
+<span class="nc" id="L564">		return depthOfWaterBelowCD;</span>
+	}
+
+	public void setDepthOfWaterBelowCD(int newDepth) {
+<span class="nc" id="L568">		depthOfWaterBelowCD = newDepth;</span>
+<span class="nc" id="L569">	}</span>
+
+	public boolean getIsExtended() {
+<span class="nc" id="L572">		return isExtended;</span>
+	}
+
+	public void setIsExtended(boolean newValue) {
+<span class="nc" id="L576">		isExtended = newValue;</span>
+<span class="nc bnc" id="L577" title="All 2 branches missed.">		if (isExtended) {</span>
+<span class="nc" id="L578">			FAIRWAY_WIDTH = FAIRWAY_WIDTH_EXTENDED;</span>
+<span class="nc" id="L579">			depthOfWaterBelowCD = DEPTH_DEEPENED;</span>
+		} else {
+<span class="nc" id="L581">			FAIRWAY_WIDTH = FAIRWAY_WIDTH_NOT_EXTENDED;</span>
+<span class="nc" id="L582">			depthOfWaterBelowCD = DEPTH_REGULAR;</span>
+		}
+<span class="nc" id="L584">		renderElbeWithoutInit();</span>
+<span class="nc" id="L585">		elbeWithUI.setupPortrayals();</span>
+<span class="nc" id="L586">	}</span>
+
+	/**
+	 * Calculates the upper border (y-value) of the fairway.
+	 *
+	 * @param x-value of position to be calculated
+	 * @return y-value in relation to given x-value
+	 */
+	public int getTopBorderOfElbe(int x) {
+<span class="nc" id="L595">		int tempLengthHelper = 0;</span>
+<span class="nc" id="L596">		int currentElbeSection = 0;</span>
+<span class="nc bnc" id="L597" title="All 2 branches missed.">		for (int i = 0; i &lt; FAIRWAY_LENGTH.length; i++) {</span>
+<span class="nc" id="L598">			tempLengthHelper += FAIRWAY_LENGTH[i];</span>
+<span class="nc bnc" id="L599" title="All 2 branches missed.">			if (tempLengthHelper &gt; x) {</span>
+<span class="nc" id="L600">				currentElbeSection = i;</span>
+<span class="nc" id="L601">				break;</span>
+			}
+		}
+<span class="nc" id="L604">		return ((fairwayWidthMax - FAIRWAY_WIDTH[currentElbeSection]) / 2);</span>
+	}
+
+	/**
+	 * Calculates the lower border (y-value) of the fairway.
+	 *
+	 * @param x-value of position to be calculated
+	 * @return y-value in relation to given x-value
+	 */
+	public int getBottomBorderOfElbe(int x) {
+<span class="nc" id="L614">		int tempLengthHelper = 0;</span>
+<span class="nc" id="L615">		int currentElbeSection = 0;</span>
+<span class="nc bnc" id="L616" title="All 2 branches missed.">		for (int i = 0; i &lt; FAIRWAY_LENGTH.length; i++) {</span>
+<span class="nc" id="L617">			tempLengthHelper += FAIRWAY_LENGTH[i];</span>
+<span class="nc bnc" id="L618" title="All 2 branches missed.">			if (tempLengthHelper &gt; x) {</span>
+<span class="nc" id="L619">				currentElbeSection = i;</span>
+<span class="nc" id="L620">				break;</span>
+			}
+		}
+
+<span class="nc" id="L624">		return (((fairwayWidthMax - FAIRWAY_WIDTH[currentElbeSection]) / 2) + MARGIN + FAIRWAY_WIDTH[currentElbeSection]);</span>
+	}
+
+	public int getFairwayLengthTotal() {
+<span class="fc" id="L628">		return fairwayLengthTotal;</span>
+	}
+
+	public int getFairwayWidthMax() {
+<span class="fc" id="L632">		return fairwayWidthMax;</span>
+	}
+
+	public boolean executeStep() {
+<span class="fc" id="L636">		return super.schedule.step(this);</span>
+	}
+
+	public boolean isTideActive() {
+<span class="fc" id="L640">		return isTideActive;</span>
+	}
+
+	public void setTideActive(boolean tideActive) {
+<span class="fc" id="L644">		isTideActive = tideActive;</span>
+<span class="fc" id="L645">		dynamicWaterLevel.setTideActive(this.isTideActive);</span>
+<span class="fc" id="L646">	}</span>
+
+	public boolean isEvaluate() {
+<span class="nc" id="L649">		return evaluate;</span>
+	}
+
+	public void setEvaluate(boolean evaluate) {
+<span class="nc" id="L653">		this.evaluate = evaluate;</span>
+<span class="nc" id="L654">	}</span>
+
+	public void setElbeWithUI(ElbeWithUI elbeWithUI) {
+<span class="fc" id="L657">		this.elbeWithUI = elbeWithUI;</span>
+<span class="fc" id="L658">	}</span>
+
+	public double getHumanErrorInShipLength() {
+<span class="nc" id="L661">		return humanErrorInShipLength;</span>
+	}
+
+	public void setHumanErrorInShipLength(double humanErrorInShipLength) {
+<span class="nc" id="L665">		this.humanErrorInShipLength = humanErrorInShipLength;</span>
+<span class="nc" id="L666">	}</span>
+
+	public double getSecurityLevelGroundToDraught() {
+<span class="nc" id="L669">		return securityLevelGroundToDraught;</span>
+	}
+
+	public void setSecurityLevelGroundToDraught(double securityLevelGroundToDraught) {
+<span class="nc" id="L673">		this.securityLevelGroundToDraught = securityLevelGroundToDraught;</span>
+<span class="nc" id="L674">	}</span>
+
+	public int getMinimumShips() {
+<span class="nc" id="L677">		return minimumShips;</span>
+	}
+
+	public void setMinimumShips(int minimumShips) {
+<span class="nc" id="L681">		this.minimumShips = minimumShips;</span>
+<span class="nc" id="L682">	}</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

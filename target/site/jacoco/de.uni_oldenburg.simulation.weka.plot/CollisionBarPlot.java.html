@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CollisionBarPlot.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">elbe</a> &gt; <a href="index.source.html" class="el_package">de.uni_oldenburg.simulation.weka.plot</a> &gt; <span class="el_source">CollisionBarPlot.java</span></div><h1>CollisionBarPlot.java</h1><pre class="source lang-java linenums">package de.uni_oldenburg.simulation.weka.plot;
+
+import org.jfree.data.category.CategoryDataset;
+import org.jfree.data.category.DefaultCategoryDataset;
+import weka.core.Instance;
+
+
+/**
+ * Implements {@link BarPlot}.
+ */
+<span class="nc" id="L11">public class CollisionBarPlot extends BarPlot {</span>
+
+	protected CategoryDataset createDataset() {
+
+<span class="nc" id="L15">		final DefaultCategoryDataset dataset =</span>
+				new DefaultCategoryDataset();
+
+<span class="nc bnc" id="L18" title="All 2 branches missed.">		for (Instance instance : instances) {</span>
+<span class="nc" id="L19">			double[] instanceValues = instance.toDoubleArray();</span>
+
+<span class="nc" id="L21">			dataset.addValue(instanceValues[1], String.valueOf(instanceValues[0]), instance.attribute(1).name()); // isTideActive</span>
+<span class="nc" id="L22">			dataset.addValue(instanceValues[2], String.valueOf(instanceValues[0]), instance.attribute(2).name()); // isElbeExtended</span>
+			//dataset.addValue(instanceValues[3], String.valueOf(instanceValues[0]), instance.attribute(3).name()); // numLargeContainerShips
+			//dataset.addValue(instanceValues[4], String.valueOf(instanceValues[0]), instance.attribute(4).name()); // numSmallContainerShips
+			//dataset.addValue(instanceValues[5], String.valueOf(instanceValues[0]), instance.attribute(5).name()); // numLargeTanker
+			//dataset.addValue(instanceValues[6], String.valueOf(instanceValues[0]), instance.attribute(6).name()); // numSmallTanker
+<span class="nc" id="L27">			dataset.addValue(instanceValues[7], String.valueOf(instanceValues[0]), instance.attribute(7).name()); // numCollisions</span>
+			//dataset.addValue(instanceValues[8], String.valueOf(instanceValues[0]), instance.attribute(8).name()); // humanError
+<span class="nc" id="L29">			dataset.addValue(instanceValues[9], String.valueOf(instanceValues[0]), instance.attribute(9).name()); // ships waiting</span>
+<span class="nc" id="L30">		}</span>
+<span class="nc" id="L31">		return dataset;</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

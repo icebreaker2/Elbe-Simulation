@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="de"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CollisionWeka.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">elbe</a> &gt; <a href="index.source.html" class="el_package">de.uni_oldenburg.simulation.weka</a> &gt; <span class="el_source">CollisionWeka.java</span></div><h1>CollisionWeka.java</h1><pre class="source lang-java linenums">package de.uni_oldenburg.simulation.weka;
+
+import de.uni_oldenburg.simulation.weka.plot.CollisionBarPlot;
+import de.uni_oldenburg.simulation.weka.plot.CollisionWithShipsBarPlot;
+import weka.core.Attribute;
+import weka.core.DenseInstance;
+import weka.core.Instances;
+
+import java.util.ArrayList;
+
+/**
+ * Implements {@link Weka}.
+ */
+public class CollisionWeka extends Weka {
+
+	public CollisionWeka(String path) {
+<span class="fc" id="L17">		super(path, &quot;collision&quot;);</span>
+<span class="fc" id="L18">	}</span>
+
+	@Override
+	public boolean addWEKAEntry(Object[] wekaEntry) {
+<span class="fc" id="L22">		long timeRun = (long) wekaEntry[0];</span>
+<span class="fc" id="L23">		boolean isTideActive = (boolean) wekaEntry[1];</span>
+<span class="fc" id="L24">		boolean isElbeExtended = (boolean) wekaEntry[2];</span>
+<span class="fc" id="L25">		int numLargeContainerShips = (int) wekaEntry[3];</span>
+<span class="fc" id="L26">		int numSmallContainerShips = (int) wekaEntry[4];</span>
+<span class="fc" id="L27">		int numLargeTanker = (int) wekaEntry[5];</span>
+<span class="fc" id="L28">		int numSmallTanker = (int) wekaEntry[6];</span>
+<span class="fc" id="L29">		int collisions = (int) wekaEntry[7];</span>
+<span class="fc" id="L30">		double humanError = (double) wekaEntry[8];</span>
+<span class="fc" id="L31">		int waitingShips = (int) wekaEntry[9];</span>
+<span class="fc" id="L32">		double securityGap = (double) wekaEntry[10];</span>
+
+<span class="pc bpc" id="L34" title="2 of 4 branches missed.">		double[] rowValuesData = new double[]{timeRun, (isTideActive ? 1 : 0), (isElbeExtended ? 1 : 0), numLargeContainerShips, numSmallContainerShips, numLargeTanker, numSmallTanker, collisions, humanError, waitingShips, securityGap};</span>
+<span class="fc" id="L35">		DenseInstance denseInstance = new DenseInstance(1.0, rowValuesData);</span>
+<span class="fc" id="L36">		return instances.add(denseInstance);</span>
+	}
+
+	@Override
+	void prepareWEKAEntry() {
+<span class="fc" id="L41">		ArrayList&lt;Attribute&gt; attributes = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L42">		Attribute timeRunAttribute = new Attribute(&quot;time&quot;);</span>
+<span class="fc" id="L43">		Attribute isTideActiveAttribute = new Attribute(&quot;tideActive&quot;);</span>
+<span class="fc" id="L44">		Attribute isElbeExtendedAttribute = new Attribute(&quot;elbeExtended&quot;);</span>
+<span class="fc" id="L45">		Attribute numLargeContainerShipAttribute = new Attribute(&quot;largeContainerShips&quot;);</span>
+<span class="fc" id="L46">		Attribute numSmallContainerShipAttribute = new Attribute(&quot;smallContainerShips&quot;);</span>
+<span class="fc" id="L47">		Attribute numLargeTankerAttribute = new Attribute(&quot;largeTanker&quot;);</span>
+<span class="fc" id="L48">		Attribute numSmallTankerAttribute = new Attribute(&quot;smallTanker&quot;);</span>
+<span class="fc" id="L49">		Attribute collisionsAttribute = new Attribute(&quot;collisions&quot;);</span>
+<span class="fc" id="L50">		Attribute humanErrorInShipLength = new Attribute(&quot;humanError&quot;);</span>
+<span class="fc" id="L51">		Attribute waitingShips = new Attribute(&quot;waitingShips&quot;);</span>
+<span class="fc" id="L52">		Attribute securityGap = new Attribute(&quot;securityGap&quot;);</span>
+
+<span class="fc" id="L54">		attributes.add(timeRunAttribute);</span>
+<span class="fc" id="L55">		attributes.add(isTideActiveAttribute);</span>
+<span class="fc" id="L56">		attributes.add(isElbeExtendedAttribute);</span>
+<span class="fc" id="L57">		attributes.add(numLargeContainerShipAttribute);</span>
+<span class="fc" id="L58">		attributes.add(numSmallContainerShipAttribute);</span>
+<span class="fc" id="L59">		attributes.add(numLargeTankerAttribute);</span>
+<span class="fc" id="L60">		attributes.add(numSmallTankerAttribute);</span>
+<span class="fc" id="L61">		attributes.add(collisionsAttribute);</span>
+<span class="fc" id="L62">		attributes.add(humanErrorInShipLength);</span>
+<span class="fc" id="L63">		attributes.add(waitingShips);</span>
+<span class="fc" id="L64">		attributes.add(securityGap);</span>
+
+<span class="fc" id="L66">		instances = new Instances(&quot;BarPlotValues&quot;, attributes, 10000000);</span>
+<span class="fc" id="L67">	}</span>
+
+	@Override
+	public void plotWEKAEntries() {
+		try {
+<span class="nc" id="L72">			new CollisionBarPlot().plot(instances);</span>
+<span class="nc" id="L73">			new CollisionWithShipsBarPlot().plot(instances);</span>
+<span class="nc" id="L74">		} catch (Exception e) {</span>
+<span class="nc" id="L75">			e.printStackTrace();</span>
+<span class="nc" id="L76">		}</span>
+<span class="nc" id="L77">	}</span>
+
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

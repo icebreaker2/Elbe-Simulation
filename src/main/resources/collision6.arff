@@ -1,0 +1,16 @@
+@relation BarPlotValues
+
+@attribute time numeric
+@attribute tideActive numeric
+@attribute elbeExtended numeric
+@attribute largeContainerShips numeric
+@attribute smallContainerShips numeric
+@attribute largeTanker numeric
+@attribute smallTanker numeric
+@attribute collisions numeric
+@attribute humanError numeric
+@attribute waitingShips numeric
+@attribute securityGap numeric
+
+@data
+1471,1,0,11,50,7,13,4,15,21,2.5

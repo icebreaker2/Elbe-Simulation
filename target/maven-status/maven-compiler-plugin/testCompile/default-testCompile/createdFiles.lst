@@ -1,0 +1,6 @@
+de\uni_oldenburg\simulation\elbe\models\WaterLevelTest.class
+de\uni_oldenburg\simulation\elbe\weka\WekaTest.class
+de\uni_oldenburg\simulation\elbe\models\TidesTest.class
+de\uni_oldenburg\simulation\elbe\models\DynamicWaterLevelTest.class
+de\uni_oldenburg\simulation\elbe\ElbeTest.class
+de\uni_oldenburg\simulation\elbe\ElbeWithUITest.class

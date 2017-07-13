@@ -1,0 +1,22 @@
+GROUP,PACKAGE,CLASS,INSTRUCTION_MISSED,INSTRUCTION_COVERED,BRANCH_MISSED,BRANCH_COVERED,LINE_MISSED,LINE_COVERED,COMPLEXITY_MISSED,COMPLEXITY_COVERED,METHOD_MISSED,METHOD_COVERED
+elbe,de.uni_oldenburg.simulation.weka.plot,Plot2D.new WindowAdapter() {...},11,0,0,0,3,0,2,0,2,0
+elbe,de.uni_oldenburg.simulation.weka.plot,CollisionWithShipsBarPlot,89,0,2,0,11,0,3,0,2,0
+elbe,de.uni_oldenburg.simulation.weka.plot,BarPlot,44,0,0,0,14,0,3,0,3,0
+elbe,de.uni_oldenburg.simulation.weka.plot,Plot2D,64,3,0,0,14,1,1,1,1,1
+elbe,de.uni_oldenburg.simulation.weka.plot,WEKAExplorer.new WindowAdapter() {...},11,0,0,0,3,0,2,0,2,0
+elbe,de.uni_oldenburg.simulation.weka.plot,WEKAExplorer,83,0,0,0,22,0,3,0,3,0
+elbe,de.uni_oldenburg.simulation.weka.plot,CollisionBarPlot,76,0,2,0,10,0,3,0,2,0
+elbe,de.uni_oldenburg.simulation.elbe,AppStarter,20,0,2,0,6,0,3,0,2,0
+elbe,de.uni_oldenburg.simulation.elbe,Elbe,876,1153,126,84,134,177,97,47,18,21
+elbe,de.uni_oldenburg.simulation.elbe,ElbeWithUI,205,82,1,1,35,17,5,5,4,5
+elbe,de.uni_oldenburg.simulation.vessels,SmallTanker,10,0,0,0,2,0,1,0,1,0
+elbe,de.uni_oldenburg.simulation.vessels,SmallContainer,0,10,0,0,0,2,0,1,0,1
+elbe,de.uni_oldenburg.simulation.vessels,LargeContainer,0,10,0,0,0,2,0,1,0,1
+elbe,de.uni_oldenburg.simulation.vessels,AbstractVessel,440,223,68,4,56,22,39,10,5,8
+elbe,de.uni_oldenburg.simulation.vessels,LargeTanker,0,10,0,0,0,2,0,1,0,1
+elbe,de.uni_oldenburg.simulation.elbe.models,DynamicWaterLevel,0,107,0,8,0,20,0,9,0,5
+elbe,de.uni_oldenburg.simulation.elbe.models,Tides,0,190,0,24,0,33,0,20,0,8
+elbe,de.uni_oldenburg.simulation.elbe.models,WaterLevel,0,19,0,0,0,8,0,4,0,4
+elbe,de.uni_oldenburg.simulation.weka,CollisionWeka,20,255,2,2,6,41,3,3,1,3
+elbe,de.uni_oldenburg.simulation.weka,Weka,16,81,0,2,6,15,1,3,1,2
+elbe,de.uni_oldenburg.simulation.weka,WaterLevelWeka,13,97,0,0,7,19,1,3,1,3
